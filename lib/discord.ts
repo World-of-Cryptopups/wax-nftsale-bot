@@ -3,6 +3,7 @@
 import {
   IMarketAsset,
   IMarketPrice,
+  ISale,
 } from "atomicmarket/build/API/Explorer/Objects";
 import fetch from "cross-fetch";
 import { atomicmarket } from "./atomicmarket";
@@ -11,7 +12,17 @@ import { WEBHOOK } from "./env";
 import { sleep } from "./etc";
 
 export const processSale = async (saleId: number, buyer: string) => {
-  const sale = await atomicmarket.getSale(saleId.toString());
+  // try to prevent sudden multiple requests
+  // TODO: add ways to improve or change this
+  await sleep(1000);
+
+  let sale: ISale;
+  try {
+    sale = await atomicmarket.getSale(saleId.toString());
+  } catch (e) {
+    console.error(`Failed to process Sale: #${saleId} | Error: ${String(e)}`);
+    return;
+  }
 
   for (const i of sale.assets) {
     // ignore other sales other than the own collection defined
@@ -41,7 +52,6 @@ export const processSale = async (saleId: number, buyer: string) => {
     }
 
     console.log(`Sent: SALE #${saleId}`);
-    await sleep(1000);
   }
 };
 
@@ -61,8 +71,6 @@ const createResponse = (
   price: IMarketPrice,
   saleId: number
 ) => {
-  console.log(asset.template.immutable_data);
-
   return {
     content: null,
     embeds: [
